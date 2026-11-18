@@ -1,0 +1,419 @@
+{% extends 'base.html' %}
+
+{% block title %}Jobs Listing{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1><i class="fas fa-briefcase"></i> Scraped Jobs</h1>
+            <p class="text-muted">Total: {{ total_jobs }} jobs</p>
+        </div>
+        <div>
+            <a href="{% url 'export_jobs' %}" class="btn btn-success me-2">
+                <i class="fas fa-download"></i> Download CSV
+            </a>
+            <button onclick="deleteAllJobs()" class="btn btn-danger">
+                <i class="fas fa-trash-alt"></i> Delete All Jobs
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Section -->
+<div class="filter-section">
+    <form method="get" class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Search Company</label>
+            <input type="text" class="form-control" name="company" placeholder="Company name" value="{{ request.GET.company }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Market</label>
+            <select class="form-control" name="market">
+                <option value="">All Markets</option>
+                <option value="USA" {% if request.GET.market == 'USA' %}selected{% endif %}>USA</option>
+                <option value="UK" {% if request.GET.market == 'UK' %}selected{% endif %}>UK</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Field</label>
+            <select class="form-control" name="field">
+                <option value="">All Fields</option>
+                <option value="TECHNICAL" {% if request.GET.field == 'TECHNICAL' %}selected{% endif %}>Technical</option>
+                <option value="NON_TECHNICAL" {% if request.GET.field == 'NON_TECHNICAL' %}selected{% endif %}>Non-Technical</option>
+                <option value="BOTH" {% if request.GET.field == 'BOTH' %}selected{% endif %}>Both</option>
+                <option value="UNKNOWN" {% if request.GET.field == 'UNKNOWN' %}selected{% endif %}>Unknown</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">&nbsp;</label>
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-search"></i> Search
+            </button>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">&nbsp;</label>
+            <a href="{% url 'jobs_page' %}" class="btn btn-secondary w-100">
+                <i class="fas fa-times"></i> Clear
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Jobs Table -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm" style="font-size: 0.85rem;">
+                <thead style="background-color: #4a5568; color: white;">
+                    <tr>
+                        <th style="min-width: 50px;">Sr. No.</th>
+                        <th style="min-width: 80px;">Field</th>
+                        <th style="min-width: 100px;">Posted Date</th>
+                        <th style="min-width: 200px;">Job Title</th>
+                        <th style="min-width: 150px;">Company</th>
+                        <th style="min-width: 70px; text-align: center;">Company URL</th>
+                        <th style="min-width: 100px;">Company Size</th>
+                        <th style="min-width: 70px; text-align: center;">Job Link</th>
+                        <th style="min-width: 100px;">Job Portal</th>
+                        <th style="min-width: 120px;">Location</th>
+                        <th style="min-width: 50px; text-align: center;">A</th>
+                        <th style="min-width: 80px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job_data in jobs_data %}
+                        <tr style="background-color: {% cycle '#f9fafb' 'white' %};">
+                            <td><strong>{{ job_data.sr_no }}</strong></td>
+                            <td>
+                                {% if job_data.job.job_field == 'TECHNICAL' %}
+                                <span class="badge" style="background-color: #2563eb; color: white; font-size: 0.75rem;">TECHNICAL</span>
+                                {% elif job_data.job.job_field == 'NON_TECHNICAL' %}
+                                <span class="badge" style="background-color: #10b981; color: white; font-size: 0.75rem;">NON-TECH</span>
+                                {% elif job_data.job.job_field == 'BOTH' %}
+                                <span class="badge" style="background-color: #7c3aed; color: white; font-size: 0.75rem;">BOTH</span>
+                                {% else %}
+                                <span class="badge" style="background-color: #6b7280; color: white; font-size: 0.75rem;">UNKNOWN</span>
+                                {% endif %}
+                                {% if job_data.job.job_type %}
+                                <small class="text-muted d-block mt-1">{{ job_data.job.job_type }}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ job_data.job.posted_date|date:"m/d/Y"|default:"-" }}</td>
+                            <td><strong>{{ job_data.job.job_title }}</strong></td>
+                            <td>{{ job_data.job.company }}</td>
+                            <td style="text-align: center;">
+                                {% if job_data.job.company_url %}
+                                <a href="{{ job_data.job.company_url }}" target="_blank" title="{{ job_data.job.company_url }}">
+                                    <i class="fas fa-external-link-alt" style="color: #3b82f6;"></i>
+                                </a>
+                                {% else %}-{% endif %}
+                            </td>
+                            <td>{{ job_data.job.get_company_size_display|default:"-" }}</td>
+                            <td style="text-align: center;">
+                                <a href="{{ job_data.job.job_link }}" target="_blank" title="View Job Posting">
+                                    <i class="fas fa-external-link-alt" style="color: #10b981;"></i>
+                                </a>
+                            </td>
+                            <td>{{ job_data.job.source_job_portal.name|default:"-" }}</td>
+                            <td>{{ job_data.job.location|default:"-" }}</td>
+                            
+                            <td style="text-align: center;">
+                                <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#jobModal{{ job_data.job.id }}" title="View Details" style="padding: 2px 6px;">
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
+                            </td>
+                            <td style="text-align: center;">
+                                <button onclick="deleteJob({{ job_data.job.id }}, '{{ job_data.job.job_title|escapejs }}')" class="btn btn-sm btn-danger" title="Delete Job" style="padding: 2px 6px;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    
+                    <!-- Job Details Modal -->
+                    <div class="modal fade" id="jobModal{{ job_data.job.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">{{ job_data.job.job_title }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p><strong>Company:</strong> {{ job_data.job.company }}</p>
+                                    <p><strong>Location:</strong> {{ job_data.job.location }}</p>
+                                    <p><strong>Market:</strong> {{ job_data.job.market }}</p>
+                                    <p><strong>Company Size:</strong> {{ job_data.job.get_company_size_display }}</p>
+                                    <p><strong>Job Type:</strong> {{ job_data.job.job_type|default:"Not specified" }}</p>
+                                    <p><strong>Posted Date:</strong> {{ job_data.job.posted_date|date:"F d, Y"|default:"Not specified" }}</p>
+                                    <p><strong>Source:</strong> {{ job_data.job.source_job_portal.name|default:"-" }}</p>
+                                    
+                                    <hr>
+                                    
+                                    <p><strong>Job Link:</strong> <a href="{{ job_data.job.job_link }}" target="_blank">{{ job_data.job.job_link }}</a></p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <a href="{{ job_data.job.job_link }}" target="_blank" class="btn btn-primary">View Full Job</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <tr>
+                        <td colspan="12" class="text-center text-muted py-5">
+                            <i class="fas fa-inbox fa-3x mb-3"></i>
+                            <p>No jobs found. Start scraping by creating and running a filter!</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Enhanced Pagination Controls -->
+        {% if paginator.num_pages > 1 or total_jobs > 0 %}
+        <div class="d-flex flex-wrap justify-content-between align-items-center mt-4 bg-light p-3 border rounded">
+            <div class="mb-2 mb-md-0">
+                <strong>Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ total_jobs }} jobs</strong>
+            </div>
+            
+            <!-- Page Size Selector -->
+            <div class="d-flex align-items-center me-3 mb-2 mb-md-0">
+                <span class="me-2">Show:</span>
+                <div class="btn-group">
+                    <a href="?per_page=10{% if request.GET.company %}&company={{ request.GET.company }}{% endif %}{% if request.GET.market %}&market={{ request.GET.market }}{% endif %}{% if request.GET.field %}&field={{ request.GET.field }}{% endif %}" class="btn btn-sm {% if request.GET.per_page == '10' or not request.GET.per_page %}btn-primary{% else %}btn-outline-primary{% endif %}">10</a>
+                    <a href="?per_page=20{% if request.GET.company %}&company={{ request.GET.company }}{% endif %}{% if request.GET.market %}&market={{ request.GET.market }}{% endif %}{% if request.GET.field %}&field={{ request.GET.field }}{% endif %}" class="btn btn-sm {% if request.GET.per_page == '20' %}btn-primary{% else %}btn-outline-primary{% endif %}">20</a>
+                    <a href="?per_page=50{% if request.GET.company %}&company={{ request.GET.company }}{% endif %}{% if request.GET.market %}&market={{ request.GET.market }}{% endif %}{% if request.GET.field %}&field={{ request.GET.field }}{% endif %}" class="btn btn-sm {% if request.GET.per_page == '50' %}btn-primary{% else %}btn-outline-primary{% endif %}">50</a>
+                    <a href="?per_page=100{% if request.GET.company %}&company={{ request.GET.company }}{% endif %}{% if request.GET.market %}&market={{ request.GET.market }}{% endif %}{% if request.GET.field %}&field={{ request.GET.field }}{% endif %}" class="btn btn-sm {% if request.GET.per_page == '100' %}btn-primary{% else %}btn-outline-primary{% endif %}">100</a>
+                </div>
+            </div>
+            
+            <!-- Pagination Controls -->
+            <nav aria-label="Job pagination" class="mb-2 mb-md-0">
+                <ul class="pagination pagination-md mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}{% if request.GET.company %}&company={{ request.GET.company }}{% endif %}{% if request.GET.market %}&market={{ request.GET.market }}{% endif %}{% if request.GET.field %}&field={{ request.GET.field }}{% endif %}" aria-label="First">
+                            <span aria-hidden="true">&laquo;&laquo;</span>
+                            <span class="visually-hidden">First</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}{% if request.GET.company %}&company={{ request.GET.company }}{% endif %}{% if request.GET.market %}&market={{ request.GET.market }}{% endif %}{% if request.GET.field %}&field={{ request.GET.field }}{% endif %}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                            <span class="visually-hidden">Previous</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo;&laquo;</span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo;</span>
+                    </li>
+                    {% endif %}
+                    
+                    {% if paginator.num_pages <= 7 %}
+                    {% for num in paginator.page_range %}
+                            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                                <a class="page-link" href="?page={{ num }}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}{% if request.GET.company %}&company={{ request.GET.company }}{% endif %}{% if request.GET.market %}&market={{ request.GET.market }}{% endif %}{% if request.GET.field %}&field={{ request.GET.field }}{% endif %}">{{ num }}</a>
+                            </li>
+                        {% endfor %}
+                    {% else %}
+                        <!-- First page -->
+                        {% if page_obj.number > 3 %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}{% if request.GET.company %}&company={{ request.GET.company }}{% endif %}{% if request.GET.market %}&market={{ request.GET.market }}{% endif %}{% if request.GET.field %}&field={{ request.GET.field }}{% endif %}">1</a>
+                            </li>
+                            {% if page_obj.number > 4 %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                        {% endif %}
+                        
+                        <!-- Current page range -->
+                        {% for num in paginator.page_range %}
+                            {% if num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+                                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                                    <a class="page-link" href="?page={{ num }}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}{% if request.GET.company %}&company={{ request.GET.company }}{% endif %}{% if request.GET.market %}&market={{ request.GET.market }}{% endif %}{% if request.GET.field %}&field={{ request.GET.field }}{% endif %}">{{ num }}</a>
+                                </li>
+                        {% endif %}
+                    {% endfor %}
+                        
+                        <!-- Last page -->
+                        {% if page_obj.number < paginator.num_pages|add:'-2' %}
+                            {% if page_obj.number < paginator.num_pages|add:'-3' %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ paginator.num_pages }}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}{% if request.GET.company %}&company={{ request.GET.company }}{% endif %}{% if request.GET.market %}&market={{ request.GET.market }}{% endif %}{% if request.GET.field %}&field={{ request.GET.field }}{% endif %}">{{ paginator.num_pages }}</a>
+                            </li>
+                        {% endif %}
+                    {% endif %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}{% if request.GET.company %}&company={{ request.GET.company }}{% endif %}{% if request.GET.market %}&market={{ request.GET.market }}{% endif %}{% if request.GET.field %}&field={{ request.GET.field }}{% endif %}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                            <span class="visually-hidden">Next</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ paginator.num_pages }}{% if request.GET.per_page %}&per_page={{ request.GET.per_page }}{% endif %}{% if request.GET.company %}&company={{ request.GET.company }}{% endif %}{% if request.GET.market %}&market={{ request.GET.market }}{% endif %}{% if request.GET.field %}&field={{ request.GET.field }}{% endif %}" aria-label="Last">
+                            <span aria-hidden="true">&raquo;&raquo;</span>
+                            <span class="visually-hidden">Last</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&raquo;</span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">&raquo;&raquo;</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function deleteJob(jobId, jobTitle) {
+    Swal.fire({
+        title: 'Delete Job?',
+        html: `Are you sure you want to delete this job?<br><br><strong>"${jobTitle}"</strong><br><br>This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef476f',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading state
+            const btn = event.target.closest('button');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            }
+            
+            // Navigate to delete URL
+            window.location.href = '/jobs/' + jobId + '/delete/?page={{ page_obj.number }}';
+        }
+    });
+}
+
+function deleteAllJobs() {
+    const totalJobs = {{ total_jobs }};
+    
+    Swal.fire({
+        title: '⚠️ WARNING',
+        html: `This will permanently delete <strong>ALL ${totalJobs} jobs</strong>!<br><br>This action cannot be undone.<br><br>Are you absolutely sure?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef476f',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete all!',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Final confirmation
+            Swal.fire({
+                title: 'Final Confirmation',
+                text: `Delete ALL ${totalJobs} jobs?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#ef476f',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, delete all!',
+                cancelButtonText: 'Cancel'
+            }).then((finalResult) => {
+                if (finalResult.isConfirmed) {
+                    // Show loading overlay
+                    Swal.fire({
+                        title: 'Deleting...',
+                        text: 'Please wait while we delete all jobs.',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
+                    // Navigate to delete all URL
+                    window.location.href = '/jobs/delete-all/';
+                }
+            });
+        }
+    });
+}
+</script>
+<script>
+// Live stream: append new jobs as they are saved
+(function(){
+    const tbody = document.querySelector('table tbody');
+    if (!tbody) return;
+    let lastTs = new Date().toISOString(); // start now; only append newer jobs
+    let srNo = {{ page_obj.end_index|default:0 }}; // continue numbering
+    const fieldBadge = (field) => {
+        switch(field){
+            case 'TECHNICAL': return '<span class="badge" style="background-color:#2563eb;color:#fff;font-size:0.75rem;">TECHNICAL</span>';
+            case 'NON_TECHNICAL': return '<span class="badge" style="background-color:#10b981;color:#fff;font-size:0.75rem;">NON-TECH</span>';
+            case 'BOTH': return '<span class="badge" style="background-color:#7c3aed;color:#fff;font-size:0.75rem;">BOTH</span>';
+            case 'UNKNOWN':
+            default:
+                return '<span class="badge" style="background-color:#6b7280;color:#fff;font-size:0.75rem;">UNKNOWN</span>';
+        }
+    };
+    function htmlEscape(s){return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));}
+    async function poll(){
+        try{
+            const res = await fetch(`/api/jobs/stream/?after=${encodeURIComponent(lastTs)}&limit=200`);
+            if(!res.ok) return;
+            const data = await res.json();
+            if(Array.isArray(data) && data.length){
+                data.forEach(j => {
+                    srNo += 1;
+                    // update lastTs to the latest scraped_at
+                    if (j.scraped_at) { lastTs = j.scraped_at; }
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${srNo}</strong></td>
+                        <td>${fieldBadge(j.job_field)}${j.job_type ? `<small class="text-muted d-block mt-1">${j.job_type}</small>` : ''}</td>
+                        <td>${j.posted_date || '-'}</td>
+                        <td><strong>${htmlEscape(j.job_title)}</strong></td>
+                        <td>${htmlEscape(j.company)}</td>
+                        <td style="text-align:center;">${j.company_url ? `<a href="${j.company_url}" target="_blank"><i class=\"fas fa-external-link-alt\" style=\"color:#3b82f6;\"></i></a>` : '-'}</td>
+                        <td>${j.company_size_display || '-'}</td>
+                        <td style="text-align:center;"><a href="${j.job_link}" target="_blank"><i class="fas fa-external-link-alt" style="color:#10b981;"></i></a></td>
+                        <td>${j.source_portal || '-'}</td>
+                        <td>${htmlEscape(j.location || '-')}
+                        </td>
+                        <td style="text-align:center;"><span class="text-muted">-</span></td>
+                        <td style="text-align:center;"><span class="text-muted">-</span></td>`;
+                    tbody.prepend(tr); // show newest first
+                });
+                // update total counter
+                const totalP = document.querySelector('.page-header p.text-muted');
+                if (totalP){
+                    const m = totalP.textContent.match(/\d+/);
+                    const current = m ? parseInt(m[0],10) : 0;
+                    totalP.textContent = `Total: ${current + data.length} jobs`;
+                }
+            }
+        }catch(e){ /* ignore */ }
+        setTimeout(poll, 500); // Poll every 500ms for faster updates
+    }
+    setTimeout(poll, 500); // Start polling immediately
+})();
+</script>
+{% endblock %}
+
